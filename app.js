@@ -1,8 +1,12 @@
 const GCM_TAG_BYTES = 16;
+const STORE_RSA = "pcd.rsaKeys";
+const STORE_AES = "pcd.wrappedAes";
 
 const els = {
   privateKey: document.getElementById("privateKey"),
   publicKey: document.getElementById("publicKey"),
+  encKey: document.getElementById("encKey"),
+  encKid: document.getElementById("encKid"),
   requestJson: document.getElementById("requestJson"),
   responseJson: document.getElementById("responseJson"),
   requestOut: document.getElementById("requestOut"),
@@ -11,6 +15,8 @@ const els = {
   decodeRequest: document.getElementById("decodeRequest"),
   decodeResponse: document.getElementById("decodeResponse"),
   decodeBoth: document.getElementById("decodeBoth"),
+  saveKeys: document.getElementById("saveKeys"),
+  deleteKeys: document.getElementById("deleteKeys"),
   clearAll: document.getElementById("clearAll"),
 };
 
@@ -19,8 +25,95 @@ function setStatus(message, kind = "") {
   els.status.className = `status${kind ? ` ${kind}` : ""}`;
 }
 
+function readStore(name) {
+  try {
+    const raw = localStorage.getItem(name);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStore(name, value) {
+  try {
+    localStorage.setItem(name, JSON.stringify(value));
+  } catch {
+    throw new Error(
+      "This browser blocked local storage. Open the page from http://localhost.",
+    );
+  }
+}
+
+function loadStoredKeys() {
+  const saved = readStore(STORE_RSA);
+  if (saved && typeof saved === "object") {
+    if (typeof saved.privateKey === "string" && !els.privateKey.value.trim()) {
+      els.privateKey.value = saved.privateKey;
+    }
+    if (typeof saved.publicKey === "string" && !els.publicKey.value.trim()) {
+      els.publicKey.value = saved.publicKey;
+    }
+  }
+  const aes = readStore(STORE_AES);
+  if (aes && typeof aes === "object") {
+    if (typeof aes.key === "string" && !els.encKey.value.trim()) {
+      els.encKey.value = aes.key;
+    }
+    if (typeof aes.kid === "string" && !els.encKid.value.trim()) {
+      els.encKid.value = aes.kid;
+    }
+  }
+  if (saved?.privateKey || saved?.publicKey) {
+    setStatus("Loaded saved keys from this browser.");
+  }
+}
+
+function saveKeys() {
+  const privateKey = els.privateKey.value.trim();
+  const publicKey = els.publicKey.value.trim();
+  if (!privateKey && !publicKey) {
+    setStatus("Paste a private or public key before saving.", "error");
+    return;
+  }
+  try {
+    if (privateKey) classifyPem(privateKey);
+    if (publicKey) classifyPem(publicKey);
+  } catch (err) {
+    setStatus(err?.message || String(err), "error");
+    return;
+  }
+  writeStore(STORE_RSA, { privateKey, publicKey });
+  setStatus("Saved keys in this browser.", "ok");
+}
+
+function deleteSavedKeys() {
+  const saved = readStore(STORE_RSA);
+  if (!saved?.privateKey && !saved?.publicKey) {
+    els.privateKey.value = "";
+    els.publicKey.value = "";
+    setStatus("No saved keys to delete.", "error");
+    return;
+  }
+  if (!window.confirm("Delete the saved private and public keys from this browser?")) {
+    return;
+  }
+  localStorage.removeItem(STORE_RSA);
+  els.privateKey.value = "";
+  els.publicKey.value = "";
+  setStatus("Deleted saved keys from this browser.", "ok");
+}
+
+function rememberWrappedKey(key, kid) {
+  const wrapped = typeof key === "string" ? key.trim() : "";
+  if (!wrapped) return;
+  const id = typeof kid === "string" ? kid.trim() : "";
+  els.encKey.value = wrapped;
+  if (id) els.encKid.value = id;
+  writeStore(STORE_AES, { key: wrapped, kid: id });
+}
+
 function base64ToBytes(b64) {
-  const normalized = b64.replace(/-/g, "+").replace(/_/g, "/");
+  const normalized = b64.replace(/\s+/g, "").replace(/-/g, "+").replace(/_/g, "/");
   const pad =
     normalized.length % 4 === 0
       ? ""
@@ -249,13 +342,77 @@ async function assertKeyPair(privateKey, publicKey) {
   }
 }
 
+function needsCommaBefore(out) {
+  const prev = out.trimEnd();
+  if (!prev) return false;
+  const last = prev[prev.length - 1];
+  if (last === "," || last === ":" || last === "{" || last === "[") return false;
+  return (
+    last === '"' ||
+    last === "}" ||
+    last === "]" ||
+    /[0-9eE]/.test(last) ||
+    prev.endsWith("true") ||
+    prev.endsWith("false") ||
+    prev.endsWith("null")
+  );
+}
+
+// Log pastes often wrap base64 onto the next line (illegal inside a JSON
+// string) and drop the comma between fields. Repair those before parsing.
+function repairLooseJson(text) {
+  let out = "";
+  let inString = false;
+  let escape = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inString) {
+      if (escape) {
+        out += c;
+        escape = false;
+        continue;
+      }
+      if (c === "\\") {
+        out += c;
+        escape = true;
+        continue;
+      }
+      if (c === '"') {
+        inString = false;
+        out += c;
+        continue;
+      }
+      if (c === "\n" || c === "\r" || c === "\t") continue;
+      out += c;
+      continue;
+    }
+
+    if (c === '"' || c === "{" || c === "[") {
+      if (needsCommaBefore(out)) out += ",";
+      if (c === '"') inString = true;
+    }
+    out += c;
+  }
+  return out;
+}
+
 function parseJson(raw, label) {
-  const text = raw.trim();
-  if (!text) throw new Error(`${label} is empty`);
+  const text = raw.replace(/^\uFEFF/, "").trim();
+  if (!text) {
+    throw new Error(
+      `${label} is empty — that box has no text. Paste the envelope, then decode again.`,
+    );
+  }
   try {
     return JSON.parse(text);
-  } catch {
-    throw new Error(`${label} is not valid JSON`);
+  } catch (first) {
+    try {
+      return JSON.parse(repairLooseJson(text));
+    } catch (second) {
+      const detail = second?.message || first?.message || "parse error";
+      throw new Error(`${label} is not valid JSON (${detail})`);
+    }
   }
 }
 
@@ -275,7 +432,9 @@ function asEnvelope(value, { requireKey = false } = {}) {
     throw new Error("Envelope needs string iv, data, and tag");
   }
   if (requireKey && typeof key !== "string") {
-    throw new Error("Envelope needs string key (RSA-wrapped AES key)");
+    throw new Error(
+      "This body has no AES key. GET responses are only enc, iv, data, and tag — paste that JSON in Response, and paste the request header X-Enc-Key above.",
+    );
   }
   return {
     enc: "1",
@@ -365,11 +524,54 @@ async function loadKeys() {
   return { privateKey, notes };
 }
 
+function wrappedKeyFromRequest() {
+  const requestRaw = els.requestJson.value.trim();
+  if (!requestRaw) return null;
+  const requestEnv = asEnvelope(parseJson(requestRaw, "Request JSON"));
+  if (!requestEnv.key) return null;
+  return { key: requestEnv.key, kid: requestEnv.kid, source: "request envelope" };
+}
+
+function headerValue(text, name) {
+  const match = text.match(
+    new RegExp(`(?:^|[\\n;])\\s*${name}\\s*[:=]\\s*([^\\s;,"']+)`, "i"),
+  );
+  return match ? match[1].trim() : "";
+}
+
+function wrappedKeyFromText(text, source) {
+  const raw = text.trim();
+  if (!raw) return null;
+  const key = headerValue(raw, "x-enc-key") || raw.replace(/\s+/g, "");
+  if (!key || /^x-enc-/i.test(key)) return null;
+  const kid = headerValue(raw, "x-enc-kid") || els.encKid.value.trim();
+  return { key, kid: kid || undefined, source };
+}
+
+function wrappedKeyFromField() {
+  return wrappedKeyFromText(els.encKey.value, "X-Enc-Key");
+}
+
+function responseSource() {
+  const responseRaw = els.responseJson.value.trim();
+  if (responseRaw) return responseRaw;
+  const requestRaw = els.requestJson.value.trim();
+  if (!requestRaw) return "";
+  try {
+    const env = asEnvelope(parseJson(requestRaw, "Request JSON"));
+    if (!env.key) return requestRaw;
+  } catch {
+    return "";
+  }
+  return "";
+}
+
 async function decodeRequest() {
   const { privateKey, notes } = await loadKeys();
   const envelope = asEnvelope(parseJson(els.requestJson.value, "Request JSON"), {
     requireKey: true,
   });
+  rememberWrappedKey(envelope.key, envelope.kid);
   const aesKey = await unwrapAesKey(privateKey, envelope.key, envelope.kid);
   const plaintext = await decryptEnvelope(aesKey, envelope);
   els.requestOut.textContent = pretty(plaintext);
@@ -378,32 +580,50 @@ async function decodeRequest() {
 
 async function decodeResponse() {
   const { privateKey, notes } = await loadKeys();
-
-  let wrappedKey;
-  let kid;
-  const requestRaw = els.requestJson.value.trim();
-  if (requestRaw) {
-    const requestEnv = asEnvelope(parseJson(requestRaw, "Request JSON"));
-    wrappedKey = requestEnv.key;
-    kid = requestEnv.kid;
-  }
-  const responseEnv = asEnvelope(
-    parseJson(els.responseJson.value, "Response JSON"),
-  );
-  if (!wrappedKey && responseEnv.key) {
-    wrappedKey = responseEnv.key;
-    kid = responseEnv.kid || kid;
-  }
-  if (!wrappedKey) {
+  const responseRaw = responseSource();
+  if (!responseRaw) {
     throw new Error(
-      "Response decode needs the request envelope (or a response that includes key)",
+      "Response JSON is empty. For a GET, paste the response body (enc, iv, data, tag) into the Response box.",
+    );
+  }
+  const headerKey = headerValue(responseRaw, "x-enc-key");
+  const headerKid = headerValue(responseRaw, "x-enc-kid");
+  const jsonStart = responseRaw.indexOf("{");
+  const jsonEnd = responseRaw.lastIndexOf("}");
+  const jsonText =
+    jsonStart >= 0 && jsonEnd > jsonStart
+      ? responseRaw.slice(jsonStart, jsonEnd + 1)
+      : responseRaw;
+  const responseEnv = asEnvelope(parseJson(jsonText, "Response JSON"));
+
+  const fromRequest = wrappedKeyFromRequest();
+  const fromField = wrappedKeyFromField();
+  const fromHeaders = headerKey
+    ? {
+        key: headerKey,
+        kid: headerKid || undefined,
+        source: "X-Enc-Key",
+      }
+    : null;
+  const fromResponse = responseEnv.key
+    ? {
+        key: responseEnv.key,
+        kid: responseEnv.kid,
+        source: "response envelope",
+      }
+    : null;
+  const chosen = fromRequest || fromField || fromHeaders || fromResponse;
+  if (!chosen) {
+    throw new Error(
+      "GET responses do not include the AES key. In DevTools, open this request → Headers → Request Headers, and paste X-Enc-Key into the box above.",
     );
   }
 
-  const aesKey = await unwrapAesKey(privateKey, wrappedKey, kid);
+  rememberWrappedKey(chosen.key, chosen.kid);
+  const aesKey = await unwrapAesKey(privateKey, chosen.key, chosen.kid);
   const plaintext = await decryptEnvelope(aesKey, responseEnv);
   els.responseOut.textContent = pretty(plaintext);
-  return { plaintext, notes, kid };
+  return { plaintext, notes, kid: chosen.kid, source: chosen.source };
 }
 
 async function run(action) {
@@ -418,9 +638,10 @@ async function run(action) {
         "ok",
       );
     } else if (action === "response") {
-      ({ notes, kid } = await decodeResponse());
+      let source;
+      ({ notes, kid, source } = await decodeResponse());
       setStatus(
-        `Response decoded${kid ? ` (kid ${kid})` : ""}.${notes[0] ? ` ${notes[0]}` : ""}`,
+        `Response decoded using ${source}${kid ? ` (kid ${kid})` : ""}.${notes[0] ? ` ${notes[0]}` : ""}`,
         "ok",
       );
     } else {
@@ -442,20 +663,32 @@ async function run(action) {
 els.decodeRequest.addEventListener("click", () => run("request"));
 els.decodeResponse.addEventListener("click", () => run("response"));
 els.decodeBoth.addEventListener("click", () => run("both"));
+els.saveKeys.addEventListener("click", () => {
+  try {
+    saveKeys();
+  } catch (err) {
+    setStatus(err?.message || String(err), "error");
+  }
+});
+els.deleteKeys.addEventListener("click", () => {
+  try {
+    deleteSavedKeys();
+  } catch (err) {
+    setStatus(err?.message || String(err), "error");
+  }
+});
 
 els.clearAll.addEventListener("click", () => {
-  for (const key of [
-    "privateKey",
-    "publicKey",
-    "requestJson",
-    "responseJson",
-  ]) {
+  for (const key of ["requestJson", "responseJson", "encKey", "encKid"]) {
     els[key].value = "";
   }
+  localStorage.removeItem(STORE_AES);
   els.requestOut.textContent = "—";
   els.responseOut.textContent = "—";
-  setStatus("Cleared.");
+  setStatus("Cleared envelopes. Saved RSA keys are still stored.");
 });
+
+loadStoredKeys();
 
 document.querySelectorAll("[data-copy]").forEach((btn) => {
   btn.addEventListener("click", async () => {

@@ -85,11 +85,26 @@ body {
 }
 
 .keys,
+.session,
 .envelopes,
 .output {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
+}
+
+.key-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+  margin: 0.85rem 0 1.15rem;
+}
+
+.hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.75rem;
 }
 
 .field {
@@ -107,6 +122,7 @@ body {
 }
 
 textarea,
+.field-input,
 .result {
   width: 100%;
   border: 1px solid var(--line);
@@ -119,7 +135,8 @@ textarea,
   resize: vertical;
 }
 
-textarea:focus {
+textarea:focus,
+.field-input:focus {
   outline: 2px solid rgba(15, 107, 76, 0.35);
   outline-offset: 1px;
 }
@@ -233,6 +250,7 @@ textarea:focus {
 
 @media (max-width: 860px) {
   .keys,
+  .session,
   .envelopes,
   .output {
     grid-template-columns: 1fr;

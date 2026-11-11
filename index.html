@@ -19,8 +19,8 @@
         <p class="brand">Payload Crypto Decoder</p>
         <h1>Offline AES-GCM unwrap</h1>
         <p class="lede">
-          Paste a server RSA private key and encrypted envelopes. Runs only in
-          your browser — nothing is uploaded.
+          Paste a server RSA private key and encrypted envelopes. Keys can be
+          saved in this browser. Runs locally — nothing is uploaded.
         </p>
       </header>
 
@@ -45,6 +45,37 @@
         </label>
       </section>
 
+      <div class="key-actions">
+        <button type="button" id="saveKeys" class="btn ghost">Save keys</button>
+        <button type="button" id="deleteKeys" class="btn ghost">
+          Delete saved keys
+        </button>
+        <p class="hint">Saved keys stay in this browser only.</p>
+      </div>
+
+      <section class="session" aria-label="Wrapped AES key">
+        <label class="field">
+          <span>Wrapped AES key (X-Enc-Key)</span>
+          <textarea
+            id="encKey"
+            rows="3"
+            spellcheck="false"
+            placeholder="GET has no body key. Paste the request header X-Enc-Key here."
+          ></textarea>
+        </label>
+        <label class="field">
+          <span>Key id (X-Enc-Kid, optional)</span>
+          <input
+            id="encKid"
+            class="field-input"
+            type="text"
+            spellcheck="false"
+            autocomplete="off"
+            placeholder="2026-01"
+          />
+        </label>
+      </section>
+
       <section class="envelopes" aria-label="Encrypted envelopes">
         <label class="field">
           <span>Request envelope (has key + iv + data + tag)</span>
@@ -56,7 +87,7 @@
           ></textarea>
         </label>
         <label class="field">
-          <span>Response envelope (iv + data + tag)</span>
+          <span>Response envelope — GET bodies are only enc, iv, data, tag</span>
           <textarea
             id="responseJson"
             rows="10"
