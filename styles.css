@@ -141,6 +141,17 @@ textarea:focus,
   outline-offset: 1px;
 }
 
+textarea.is-locked {
+  background: rgba(16, 35, 28, 0.08);
+  color: #6d7f76;
+  cursor: default;
+  resize: none;
+}
+
+textarea.is-locked:focus {
+  outline: none;
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;
@@ -165,6 +176,16 @@ textarea:focus,
 
 .btn:active {
   transform: translateY(0);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+  transform: none;
+}
+
+.btn:disabled:hover {
+  transform: none;
 }
 
 .btn.primary {

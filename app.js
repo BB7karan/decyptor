@@ -63,9 +63,20 @@ function loadStoredKeys() {
       els.encKid.value = aes.kid;
     }
   }
-  if (saved?.privateKey || saved?.publicKey) {
+  const locked = Boolean(saved?.privateKey || saved?.publicKey);
+  setKeysLocked(locked);
+  if (locked) {
     setStatus("Loaded saved keys from this browser.");
   }
+}
+
+function setKeysLocked(locked) {
+  for (const el of [els.privateKey, els.publicKey]) {
+    el.readOnly = locked;
+    el.classList.toggle("is-locked", locked);
+    el.tabIndex = locked ? -1 : 0;
+  }
+  els.saveKeys.disabled = locked;
 }
 
 function saveKeys() {
@@ -83,7 +94,8 @@ function saveKeys() {
     return;
   }
   writeStore(STORE_RSA, { privateKey, publicKey });
-  setStatus("Saved keys in this browser.", "ok");
+  setKeysLocked(true);
+  setStatus("Saved keys in this browser. Delete them to edit.", "ok");
 }
 
 function deleteSavedKeys() {
@@ -91,6 +103,7 @@ function deleteSavedKeys() {
   if (!saved?.privateKey && !saved?.publicKey) {
     els.privateKey.value = "";
     els.publicKey.value = "";
+    setKeysLocked(false);
     setStatus("No saved keys to delete.", "error");
     return;
   }
@@ -100,6 +113,7 @@ function deleteSavedKeys() {
   localStorage.removeItem(STORE_RSA);
   els.privateKey.value = "";
   els.publicKey.value = "";
+  setKeysLocked(false);
   setStatus("Deleted saved keys from this browser.", "ok");
 }
 
