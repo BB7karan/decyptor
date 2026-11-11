@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Payload Crypto Decoder</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="bg" aria-hidden="true"></div>
+    <main class="shell">
+      <header class="hero">
+        <p class="brand">Payload Crypto Decoder</p>
+        <h1>Offline AES-GCM unwrap</h1>
+        <p class="lede">
+          Paste a server RSA private key and encrypted envelopes. Runs only in
+          your browser — nothing is uploaded.
+        </p>
+      </header>
+
+      <section class="keys" aria-label="RSA keys">
+        <label class="field">
+          <span>Private key — required (PEM or base64 PEM)</span>
+          <textarea
+            id="privateKey"
+            rows="7"
+            spellcheck="false"
+            placeholder="Paste PAYLOAD_RSA_PRIVATE_KEY from .env (the long LS0t… base64) or a PEM block"
+          ></textarea>
+        </label>
+        <label class="field">
+          <span>Public key — optional (auto-detects if swapped)</span>
+          <textarea
+            id="publicKey"
+            rows="7"
+            spellcheck="false"
+            placeholder="Paste PAYLOAD_RSA_PUBLIC_KEY from .env (optional)"
+          ></textarea>
+        </label>
+      </section>
+
+      <section class="envelopes" aria-label="Encrypted envelopes">
+        <label class="field">
+          <span>Request envelope (has key + iv + data + tag)</span>
+          <textarea
+            id="requestJson"
+            rows="10"
+            spellcheck="false"
+            placeholder='{"enc":"1","kid":"...","key":"...","iv":"...","data":"...","tag":"..."}'
+          ></textarea>
+        </label>
+        <label class="field">
+          <span>Response envelope (iv + data + tag)</span>
+          <textarea
+            id="responseJson"
+            rows="10"
+            spellcheck="false"
+            placeholder='{"enc":"1","iv":"...","data":"...","tag":"..."}'
+          ></textarea>
+        </label>
+      </section>
+
+      <div class="actions">
+        <button type="button" id="decodeRequest" class="btn primary">
+          Decode request
+        </button>
+        <button type="button" id="decodeResponse" class="btn primary">
+          Decode response
+        </button>
+        <button type="button" id="decodeBoth" class="btn accent">
+          Decode both
+        </button>
+        <button type="button" id="clearAll" class="btn ghost">Clear</button>
+      </div>
+
+      <p id="status" class="status" role="status"></p>
+
+      <section class="output" aria-label="Decoded output">
+        <div class="out-block">
+          <div class="out-head">
+            <h2>Request plaintext</h2>
+            <button type="button" class="btn tiny" data-copy="requestOut">
+              Copy
+            </button>
+          </div>
+          <pre id="requestOut" class="result">—</pre>
+        </div>
+        <div class="out-block">
+          <div class="out-head">
+            <h2>Response plaintext</h2>
+            <button type="button" class="btn tiny" data-copy="responseOut">
+              Copy
+            </button>
+          </div>
+          <pre id="responseOut" class="result">—</pre>
+        </div>
+      </section>
+    </main>
+    <script src="./app.js"></script>
+  </body>
+</html>

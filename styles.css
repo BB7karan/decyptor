@@ -1,0 +1,240 @@
+:root {
+  --ink: #10231c;
+  --muted: #4a6358;
+  --paper: #eef4ef;
+  --panel: rgba(255, 255, 255, 0.72);
+  --line: rgba(16, 35, 28, 0.14);
+  --accent: #0f6b4c;
+  --accent-2: #c45c26;
+  --danger: #9b1d1d;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+  --display: "Syne", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  color: var(--ink);
+  font-family: var(--mono);
+  background: var(--paper);
+}
+
+.bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(900px 480px at 12% -10%, rgba(15, 107, 76, 0.18), transparent 60%),
+    radial-gradient(700px 420px at 100% 0%, rgba(196, 92, 38, 0.16), transparent 55%),
+    linear-gradient(165deg, #f7faf7 0%, #e7efe9 45%, #dce8e0 100%);
+}
+
+.bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.35;
+  background-image: linear-gradient(rgba(16, 35, 28, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(16, 35, 28, 0.04) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: linear-gradient(180deg, #000 0%, transparent 85%);
+}
+
+.shell {
+  width: min(1120px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 2.5rem 0 4rem;
+}
+
+.hero {
+  margin-bottom: 1.75rem;
+  animation: rise 0.55s ease both;
+}
+
+.brand {
+  margin: 0 0 0.4rem;
+  font-family: var(--display);
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 0.95;
+}
+
+.hero h1 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: clamp(1.1rem, 2.4vw, 1.45rem);
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.lede {
+  max-width: 46rem;
+  margin: 0.75rem 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.keys,
+.envelopes,
+.output {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  animation: rise 0.6s ease both;
+}
+
+.field span {
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+textarea,
+.result {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  backdrop-filter: blur(8px);
+  color: var(--ink);
+  font: 0.82rem/1.45 var(--mono);
+  padding: 0.85rem 0.95rem;
+  resize: vertical;
+}
+
+textarea:focus {
+  outline: 2px solid rgba(15, 107, 76, 0.35);
+  outline-offset: 1px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin: 1.15rem 0 0.75rem;
+  animation: rise 0.65s ease both;
+}
+
+.btn {
+  appearance: none;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 0.7rem 1.1rem;
+  font: 600 0.82rem/1 var(--mono);
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+.btn.primary {
+  background: var(--ink);
+  color: #f4f8f5;
+}
+
+.btn.accent {
+  background: var(--accent);
+  color: #f4f8f5;
+}
+
+.btn.ghost {
+  background: transparent;
+  border-color: var(--line);
+  color: var(--muted);
+}
+
+.btn.tiny {
+  padding: 0.35rem 0.7rem;
+  font-size: 0.72rem;
+  background: transparent;
+  border-color: var(--line);
+  color: var(--muted);
+}
+
+.status {
+  min-height: 1.25rem;
+  margin: 0 0 1rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.status.error {
+  color: var(--danger);
+}
+
+.status.ok {
+  color: var(--accent);
+}
+
+.output {
+  margin-top: 0.25rem;
+}
+
+.out-block {
+  animation: rise 0.7s ease both;
+}
+
+.out-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.4rem;
+}
+
+.out-head h2 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.result {
+  min-height: 12rem;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow: auto;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 860px) {
+  .keys,
+  .envelopes,
+  .output {
+    grid-template-columns: 1fr;
+  }
+}
